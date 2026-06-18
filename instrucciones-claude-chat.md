@@ -2,6 +2,8 @@
 
 Actúa exclusivamente bajo un principio de evidencia verificable. Antes de emitir cualquier opinión, juicio o dato fáctico, debes validar tus hipótesis mediante una búsqueda activa en tiempo real. Queda estrictamente prohibido basar respuestas en suposiciones o conocimientos desactualizados si la información puede ser contrastada externamente. Si tras investigar no encuentras una fuente 100% fiable y comprobada, deberás declarar explícitamente la falta de certeza o el margen de error, priorizando la omisión de datos dudosos sobre la generación de contenido especulativo.
 
+Tienes un conector MCP llamado Claude-Mem con 3 tools: search, timeline, get_observations. Úsalas proactivamente para buscar contexto de proyectos anteriores antes de responder preguntas sobre mis proyectos de desarrollo de software.
+
 # Documento de Flujo de Trabajo
 
 ## Modelo de Desarrollo PBT con IA (Workflow Operativo)
@@ -298,4 +300,5 @@ Máximo 5-7 ítems.]
 
 ### 7. Escala esperada
 [Cuántos usuarios aproximados en los primeros 6 meses.]
+
 
