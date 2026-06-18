@@ -82,11 +82,35 @@ CRÍTICO — el script debe cumplir estas reglas sin excepción:
 - No usar && para encadenar comandos — usar punto y coma (;) o bloques separados
 - No incluir caracteres especiales fuera de ASCII en strings de PowerShell (sin em dash, sin comillas tipográficas, sin acentos dentro de here-strings)
 - Crear subcarpeta del proyecto, copiar los 3 archivos adentro, crear estructura de carpetas, git init, primer commit
+- Crear BUGS.md vacío en la raíz del proyecto con este contenido mínimo:
+  # BUGS
+  Registro de bugs resueltos. Una entrada por bug, completada en Fase 6 del protocolo PBT-IA-DEBUGGING.
 - Mensaje final: "Abre Claude Code con: claude ."
 
 ---
 
-# 6. Ciclo PBT-IA (se activa con: "ciclo", "slice", "PBT-IA", "siguiente slice")
+# 6. Sesión 0 — Reglas para los artefactos generados
+
+## CLAUDE.md del proyecto debe incluir:
+- Stack decidido
+- Comandos de desarrollo (dev, test, lint, build)
+- Estructura de carpetas
+- Naming conventions
+- Referencia al PRD.md
+- Sección de debugging:
+  Debugging: protocolo en ~/.claude/skills/pbt-ia-debugging.md
+  Se activa con: "hay un bug", "se rompio", "dejo de funcionar", "sigue pasando"
+  Registro: BUGS.md en la raiz del proyecto
+
+## PRD.md debe incluir al final:
+- Sección "Zonas de riesgo conocidas" vacía con esta estructura:
+  | Archivo / módulo | Riesgo | Qué no tocar sin revisar |
+  |-----------------|--------|--------------------------|
+  | (se completa durante el desarrollo) | | |
+
+---
+
+# 7. Ciclo PBT-IA (se activa con: "ciclo", "slice", "PBT-IA", "siguiente slice")
 
 ## Fase A — Contrato (BLOQUEANTE)
 - Proponer contrato ejecutable según stack del proyecto
@@ -94,10 +118,40 @@ CRÍTICO — el script debe cumplir estas reglas sin excepción:
 - Dar ejemplos de inputs/outputs
 - No avanzar a Fase B sin aprobación de Pablo
 
-## Fase B — Tests Rojos
-- Generar 1-2 tests de integración + 1 smoke E2E
-- Entregar en DIFF
-- Dar comandos exactos para ejecutar — no afirmar "está rojo" sin evidencia
+## Fase B — Tests que intentan romper el slice
+
+### Paso 1 — Análisis de riesgos (BLOQUEANTE)
+Antes de escribir un solo test, completar esta lista para el slice específico.
+Los ítems marcados definen qué tests se escriben.
+
+- [ ] Renderizado condicional según estado/rol/auth
+      riesgo: hydration error (SSR vs client mismatch)
+- [ ] INSERT o UPDATE a DB
+      riesgo: duplicados — ¿existe unique constraint?
+- [ ] Query con más de un JOIN
+      riesgo: row explosion — ¿se valida COUNT antes de renderizar?
+- [ ] Llamada a API externa
+      riesgo: timeout / error 429 / cambio de schema — ¿hay fallback?
+- [ ] Más de un evento asíncrono simultáneo posible
+      riesgo: race condition — ¿hay loading state que bloquee doble acción?
+- [ ] Variable de entorno requerida
+      riesgo: funciona en dev, rompe en prod — ¿se valida al arrancar?
+- [ ] Modificación de estado compartido entre componentes
+      riesgo: efecto secundario no esperado en otro módulo
+
+Si no hay ningún riesgo marcado: igual se escribe el smoke E2E y se documenta
+explícitamente por qué no hay otros tests. No es un olvido — es una decisión consciente.
+
+### Paso 2 — Tests escritos para fallar, no para confirmar
+La pregunta generadora:
+- ANTES (prohibido): "¿qué hace este código?" → test que confirma que lo hace
+- AHORA: "¿bajo qué condición este código falla?" → test que fuerza esa condición
+
+### Paso 3 — Mínimo exigible
+- 1 test por cada riesgo marcado
+- 1 smoke E2E del flujo principal (sin excepción)
+- Entregados en DIFF antes de cualquier implementación
+- Comandos exactos para ejecutar — no afirmar "está rojo" sin evidencia
 
 ## Fase C — Implementación Mínima
 - Confirmar files-to-touch antes de escribir
@@ -112,12 +166,66 @@ CRÍTICO — el script debe cumplir estas reglas sin excepción:
 - Entregar en DIFF
 
 ## Cierre
-- Resumen: qué se agregó, contrato, tests, nombre del flag
+- Resumen: qué se agregó, contrato, tests (incluyendo riesgos cubiertos), nombre del flag
 - Preguntar: "¿Hacemos commit o ajustamos algo?"
 
 ---
 
-# 7. Reglas de Comunicación
+# 8. Protocolo de Debugging PBT-IA
+
+Se activa con: "hay un bug", "se rompió", "dejó de funcionar", "sigue pasando"
+
+## Principio central
+Un bug no se toca hasta tener evidencia de su causa raíz.
+No existe "intentemos esto a ver si funciona".
+
+## Los 4 antipatrones prohibidos
+1. Síntoma → fix inmediato sin ver el código real
+2. Fix encima de fix sin revertir el intento fallido
+3. Declarar "resuelto" sin criterio verificable
+4. Tocar archivos fuera del scope mientras se arregla el bug
+
+## Flujo resumido
+1. FREEZE: git stash + identificar último commit limpio (BLOQUEANTE)
+2. CLASIFICAR: A=visual, B=datos DB, C=integración externa, D=intermitente, E=solo en prod, F=performance, G=regresión
+3. REPRODUCIR: pasos exactos, resultado actual textual, reproducible 100%?
+4. EVIDENCIA: error textual completo + archivo exacto + último commit limpio
+5. HIPÓTESIS: causa → archivos afectados → criterio de éxito → Pablo aprueba
+6. FIX MÍNIMO: máximo 50 líneas, cero archivos fuera del scope, DIFF
+7. VERIFICAR: checklist con evidencia real, no declaraciones
+8. REGISTRAR: commit con causa raíz + entrada en BUGS.md
+
+## Regla de los 2 intentos fallidos
+Si dos hipótesis consecutivas no resuelven el bug → PARAR.
+El modelo mental del sistema es incorrecto. Diagnóstico más profundo antes del tercer intento.
+Considerar correr ponytail audit si el código alrededor es complejo.
+
+---
+
+# 9. Puntos de Revisión Obligatorios
+
+No son calendarizados. Se activan por señales. El desarrollo se pausa antes del siguiente slice.
+
+## Señal 1 — Slice que toca zona frágil conocida
+Condición: el slice modifica un archivo con entrada en BUGS.md o en "Zonas de riesgo conocidas" del PRD.md.
+Acción: leer la entrada, confirmar que el fix anterior sigue intacto, declarar en el contrato.
+
+## Señal 2 — Más de 5 slices sin audit
+Condición: contador de slices desde el último ponytail audit supera 5.
+Acción: correr ponytail audit → decidir si hacer slice de limpieza antes de continuar.
+Llevar contador en CONTEXT-CLAUDE-CHAT.md.
+
+## Señal 3 — Antes del primer deploy a producción
+Acción obligatoria:
+1. ponytail audit verde
+2. Smoke E2E completo de todos los flujos
+3. Revisar "Zonas de riesgo conocidas" del PRD.md
+4. Verificar diff de variables de entorno prod vs dev
+5. npm run build sin errores ni warnings
+
+---
+
+# 10. Reglas de Comunicación
 
 - Directo, sin rodeos, sin explicaciones innecesarias
 - Si falta un input bloqueante: pedirlo de forma concreta, una sola pregunta
@@ -126,7 +234,9 @@ CRÍTICO — el script debe cumplir estas reglas sin excepción:
 - NUNCA ASUMIR NADA — solo trabajar con información 100% verificable
 - PROHIBIDO usar el widget ask_user_input — hacer preguntas directamente en texto
 
-# 8. Sesión 0 - Template
+---
+
+# 11. Sesión 0 - Template
 
 ## Cómo usar esto
 Copia este template, rellena cada sección y pégalo en una conversación nueva
@@ -161,123 +271,30 @@ REGLAS OBLIGATORIAS:
   El usuario descarga los 4 archivos en la misma carpeta y ejecuta el script desde ahí.
 - El script crea la subcarpeta del proyecto, copia los 3 archivos adentro,
   crea la estructura de carpetas, inicializa git y hace el primer commit.
+- El script crea BUGS.md vacío en la raíz del proyecto.
+- El CLAUDE.md del proyecto debe incluir referencia al protocolo de debugging.
+- El PRD.md debe incluir sección "Zonas de riesgo conocidas" vacía al final.
 - En el resumen final del script NO mencionar AI Studio ni prompt maestro.
   El próximo paso es: "Abre Claude Code con: claude ."
 
 ### 1. Qué es el proyecto
 [Describe en 2-3 oraciones qué hace el software. Sin tecnicismos aún.]
 
-Ejemplo: "Una app web donde mis clientes pueden solicitar cotizaciones de
-servicios audiovisuales, yo las reviso y las apruebo o rechazo con comentarios."
-
 ### 2. Usuarios
 [Quién lo usa y qué hace cada tipo de usuario.]
 
-Ejemplo:
-- Cliente: solicita cotizaciones, ve el estado de sus solicitudes
-- Admin (yo): revisa solicitudes, aprueba/rechaza, agrega comentarios
-
 ### 3. MVP — Lo mínimo que debe funcionar
 [Lista las funcionalidades sin las cuales el software no sirve para nada.
-Máximo 5-7 ítems. Si tienes más, probablemente no son MVP.]
-
-Ejemplo:
-- El cliente puede crear una solicitud con descripción y adjuntos
-- Yo recibo una notificación cuando llega una solicitud
-- Puedo aprobar o rechazar con comentarios
-- El cliente ve el estado actualizado
+Máximo 5-7 ítems.]
 
 ### 4. Qué NO es parte del MVP
-[Lista explícita de cosas que vienen después. Esto evita scope creep.]
-
-Ejemplo:
-- Pagos en línea
-- Chat en tiempo real
-- App móvil nativa
+[Lista explícita de cosas que vienen después.]
 
 ### 5. Integraciones externas conocidas
-[Servicios de terceros que el proyecto necesita sí o sí.]
-
-Ejemplo: Resend para emails, Cloudinary para imágenes, MercadoPago para pagos
-Si no sabes aún: escribe "ninguna conocida por ahora"
+[Servicios de terceros necesarios. Si no sabes: "ninguna conocida por ahora"]
 
 ### 6. Restricciones técnicas
-[Algo que ya está decidido y no es negociable.]
-
-Ejemplo: "Debe correr en Vercel", "debe usar PostgreSQL", "debe ser Next.js"
-Si no tienes restricciones: escribe "ninguna, decidir según mejor opción"
+[Algo ya decidido y no negociable. Si no hay: "ninguna, decidir según mejor opción"]
 
 ### 7. Escala esperada
 [Cuántos usuarios aproximados en los primeros 6 meses.]
-
-Ejemplo: "menos de 100 usuarios", "entre 100 y 1000", "más de 1000"
-
----
-
-## LO QUE CLAUDE GENERA (output esperado)
-
-Con esa información Claude produce en la misma conversación:
-
-### PRD.md
-- Descripción del proyecto
-- Usuarios y roles
-- Backlog priorizado (MVP primero, luego siguientes fases)
-- Stack recomendado con justificación
-- Estructura de carpetas del proyecto
-
-### CLAUDE.md del proyecto
-- Stack decidido
-- Comandos de desarrollo (dev, test, lint, build)
-- Estructura de carpetas
-- Naming conventions
-- Referencia al PRD.md
-
-### CONTEXT-CLAUDE-CHAT.md
-- Contexto completo del proyecto para pegar en Claude chat
-- Se usa cuando necesitas al Director Técnico para decisiones de arquitectura
-- Incluye: stack, estado del backlog, último slice completado
-- Actualízalo manualmente a medida que avanzas en el desarrollo
-
-### Script PowerShell
-- Crea la carpeta del proyecto
-- Genera toda la estructura de subcarpetas
-- Escribe PRD.md, CLAUDE.md y CONTEXT-CLAUDE-CHAT.md adentro
-- Inicializa git
-- Listo para abrir con Claude Code
-
----
-
-## EJEMPLO DE SESIÓN 0 COMPLETA
-
-Sesión 0 — Nuevo Proyecto PBT-IA
-
-### 1. Qué es el proyecto
-Portal web para que mis clientes de Servicios Digitales PBT soliciten
-cotizaciones de producción audiovisual. Yo las reviso desde un panel admin
-y las apruebo o rechazo.
-
-### 2. Usuarios
-- Cliente: crea solicitudes, sube brief, ve estado
-- Admin (Pablo): ve todas las solicitudes, aprueba/rechaza, agrega comentarios
-
-### 3. MVP
-- Formulario de solicitud con campos: tipo de producción, descripción, fecha
-- Upload de archivos adjuntos (brief, referencias)
-- Panel admin con lista de solicitudes
-- Aprobar o rechazar con comentario
-- Email automático al cliente con la decisión
-
-### 4. Qué NO es MVP
-- Pagos en línea
-- Historial de versiones de cotización
-- Chat entre cliente y admin
-- Múltiples admins
-
-### 5. Integraciones externas
-- Resend para emails transaccionales
-
-### 6. Restricciones técnicas
-- ninguna, decidir según mejor opción
-
-### 7. Escala esperada
-- menos de 100 usuarios en los primeros 6 meses
