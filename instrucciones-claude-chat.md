@@ -120,6 +120,23 @@ CRÍTICO — el script debe cumplir estas reglas sin excepción:
 - Dar ejemplos de inputs/outputs
 - No avanzar a Fase B sin aprobación de Pablo
 
+## Revisión de impacto lateral (OBLIGATORIO antes de cerrar Fase A)
+
+Antes de presentar el contrato final, revisar el árbol completo 
+de archivos del proyecto y responder:
+
+¿Qué archivos que YA EXISTEN necesitan cambiar para que lo que 
+este slice introduce quede correctamente integrado al resto del sistema?
+
+- Si la respuesta es "ninguno" → declararlo explícitamente con justificación.
+- Si hay alguno → entra obligatoriamente en la lista de archivos del slice.
+  No se difiere a "después". No se omite silenciosamente.
+
+Esta revisión cubre sin excepción: navegación y UI, rutas e imports, 
+tipos TypeScript compartidos, schema de DB y migraciones, middleware 
+y permisos, variables de entorno, feature flags, tests existentes, 
+y cualquier otro archivo que referencie lo que este slice toca.
+
 ## Fase B — Tests que intentan romper el slice
 
 ### Paso 1 — Análisis de riesgos (BLOQUEANTE)
@@ -300,5 +317,3 @@ Máximo 5-7 ítems.]
 
 ### 7. Escala esperada
 [Cuántos usuarios aproximados en los primeros 6 meses.]
-
-
