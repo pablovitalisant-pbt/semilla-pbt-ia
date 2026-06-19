@@ -26,10 +26,6 @@ El desarrollo sigue la metodologia PBT-IA. Los roles son:
 Se activa con: "ciclo", "slice", "PBT-IA", "siguiente slice"
 
 - Fase A: Contrato (BLOQUEANTE — esperar aprobacion antes de continuar)
-- Fase B: Tests que intentan romper el slice (ver FASE-B-REFORMULADA.md)
-- Fase C: Implementacion minima
-- Fase D: Verificacion + Feature Flag
-- Cierre: resumen y pregunta de commit
 
 ## Revisión de impacto lateral (OBLIGATORIO antes de cerrar Fase A)
 
@@ -47,6 +43,11 @@ Esta revisión cubre sin excepción: navegación y UI, rutas e imports,
 tipos TypeScript compartidos, schema de DB y migraciones, middleware 
 y permisos, variables de entorno, feature flags, tests existentes, 
 y cualquier otro archivo que referencie lo que este slice toca.
+
+- Fase B: Tests que intentan romper el slice (ver FASE-B-REFORMULADA.md)
+- Fase C: Implementacion minima
+- Fase D: Verificacion + Feature Flag
+- Cierre: resumen y pregunta de commit
 
 ## Debugging
 
